@@ -19,6 +19,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_)
 open import plfa.part1.Isomorphism using (_≃_; extensionality)
+open import plfa.part1.Connectives using (currying)
 ```
 
 
@@ -190,7 +191,11 @@ Using negation, show that
 is irreflexive, that is, `n < n` holds for no `n`.
 
 ```agda
--- Your code goes here
+open import plfa.part1.Relations using (_<_)
+open _<_
+
+<-irrefl : ∀ (n : ℕ) → ¬ (n < n)
+<-irrefl n (s<s {m} m<m) = (<-irrefl m) m<m
 ```
 
 
@@ -208,7 +213,48 @@ Here "exactly one" means that not only one of the three must hold,
 but that when one holds the negation of the other two must also hold.
 
 ```agda
--- Your code goes here
+open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩)
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; cong; sym; trans)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
+open import plfa.part1.Isomorphism using (_∘_)
+
+¬-<-zero : ∀ {n : ℕ} → ¬ (suc n < zero)
+¬-<-zero = λ()
+
+<-trichotomy : ∀ (m n : ℕ) →
+  ((m < n) × (m ≢ n) × ¬ (n < m))
+  ⊎ (¬ (m < n) × (m ≡ n) × ¬ (n < m))
+  ⊎ (¬ (m < n) × (m ≢ n) × (n < m))
+<-trichotomy zero zero        =  inj₂ (inj₁  ⟨ <-irrefl zero , ⟨ refl , <-irrefl zero ⟩ ⟩)
+<-trichotomy zero (suc n)     =  inj₁ ⟨ z<s , ⟨ peano , ¬-<-zero  ⟩ ⟩
+<-trichotomy (suc m) zero     =  inj₂ (inj₂ ⟨ ¬-<-zero , ⟨ peano ∘ sym , z<s ⟩ ⟩)
+<-trichotomy (suc m) (suc n)  =  helper (<-trichotomy m n)
+  where
+  helper : ∀ {m n : ℕ}
+    → ((m < n) × (m ≢ n) × ¬ (n < m))
+    ⊎ (¬ (m < n) × (m ≡ n) × ¬ (n < m))
+    ⊎ (¬ (m < n) × (m ≢ n) × (n < m))
+    → ((suc m < suc n) × (suc m ≢ suc n) × ¬ (suc n < suc m))
+    ⊎ (¬ (suc m < suc n) × (suc m ≡ suc n) × ¬ (suc n < suc m))
+    ⊎ (¬ (suc m < suc n) × (suc m ≢ suc n) × (suc n < suc m))
+  helper {m} {n} (inj₁ x) = inj₁
+    ⟨ s<s (proj₁ x)
+    , ⟨ (λ{ refl → proj₁ (proj₂ x) refl})
+    , (λ{ (s<s y) → proj₂ (proj₂ x) y})
+    ⟩ ⟩
+  helper {m} {n} (inj₂ (inj₁ x)) = inj₂ (inj₁
+    ⟨ (λ{ (s<s y) → (proj₁ x) y })
+    , ⟨ cong suc (proj₁ (proj₂ x))
+    , (λ{ (s<s y) → proj₂ (proj₂ x) y})
+    ⟩ ⟩)
+  helper {m} {n} (inj₂ (inj₂ x)) = inj₂ (inj₂
+    ⟨ (λ{ (s<s y) → (proj₁ x) y })
+    , ⟨ (λ { refl → proj₁ (proj₂ x) refl})
+    , s<s (proj₂ (proj₂ x))
+    ⟩ ⟩)
+
+-- 
 ```
 
 #### Exercise `⊎-dual-×` (recommended)
@@ -221,13 +267,33 @@ version of De Morgan's Law.
 This result is an easy consequence of something we've proved previously.
 
 ```agda
--- Your code goes here
+⊎-dual-× : {A B : Set}
+  → ¬ (A ⊎ B) ≃ (¬ A) × (¬ B)
+⊎-dual-× =
+  record
+    { to = λ e → ⟨ (λ a → e (inj₁ a)) , (λ b → e (inj₂ b)) ⟩
+    ; from = λ x → λ{ (inj₁ y) → (proj₁ x) y ; (inj₂ y) → (proj₂ x) y }
+    ; from∘to = λ x → extensionality λ { (inj₁ x) → refl ; (inj₂ y) → refl }
+    ; to∘from = λ y → refl
+    }
 ```
 
 
 Do we also have the following?
 
     ¬ (A × B) ≃ (¬ A) ⊎ (¬ B)
+
+```agda
+-- ×-dual-⊎ : {A B : Set} → (¬ (A × B)) ⇔ ((¬ A) ⊎ (¬ B))
+-- ×-dual-⊎ =
+--   record
+--     { to = λ{ x → inj₁ λ y → x ⟨ y , {! -- need a B here!!!} ⟩ }
+--     ; from = λ { (inj₁ x) y → x (proj₁ y) ; (inj₂ x) y → x (proj₂ y)}
+--     }
+
+⊎-to-× : {A B : Set} → ((¬ A) ⊎ (¬ B)) → (¬ (A × B))
+⊎-to-× = λ { (inj₁ x) y → x (proj₁ y) ; (inj₂ x) y → x (proj₂ y)}
+```
 
 If so, prove; if not, can you give a relation weaker than
 isomorphism that relates the two sides?
@@ -280,8 +346,8 @@ _Communications of the ACM_, December 2015.)
 
 The law of the excluded middle can be formulated as follows:
 ```agda
-postulate
-  em : ∀ {A : Set} → A ⊎ ¬ A
+-- postulate
+--   em : ∀ {A : Set} → A ⊎ ¬ A
 ```
 As we noted, the law of the excluded middle does not hold in
 intuitionistic logic.  However, we can show that it is _irrefutable_,
@@ -289,7 +355,7 @@ meaning that the negation of its negation is provable (and hence that
 its negation is never provable):
 ```agda
 em-irrefutable : ∀ {A : Set} → ¬ ¬ (A ⊎ ¬ A)
-em-irrefutable = λ k → k (inj₂ (λ x → k (inj₁ x)))
+em-irrefutable k = k (inj₂ λ x → k (inj₁ x))
 ```
 The best way to explain this code is to develop it interactively:
 
@@ -377,8 +443,76 @@ Consider the following principles:
 
 Show that each of these implies all the others.
 
-```agda
--- Your code goes here
+-- ```agda
+-- postulate
+--   double-negation : {A : Set} → (¬ ¬ A → A)
+open import Level using (Level) renaming (zero to lzero; suc to lsuc)
+
+record _⇔_ {ℓ : Level} (A B : Set ℓ) : (Set ℓ) where
+  field
+    to : A → B
+    from : B → A
+
+em⇔dne : (∀ {A : Set} → (A ⊎ ¬ A)) ⇔ (∀ {B : Set} → (¬ ¬ B → B))
+em⇔dne = 
+  record
+    { to = λ em → λ {A} x → helper x (em {A})
+    ; from = λ dne → dne em-irrefutable
+    }
+  where
+    helper : ∀ {A : Set} → ¬ ¬ A → (A ⊎ ¬ A) → A
+    helper ¬¬a (inj₁ x) = x
+    helper ¬¬a (inj₂ y) = ⊥-elim (¬¬a y)
+
+
+em-contra : (∀ {A : Set} → (A ⊎ ¬ A)) → ∀ {B C : Set} → (¬ B → ¬ C) → (C → B)
+em-contra eb f c = ((_⇔_.to em⇔dne) eb) (((contraposition f) (¬¬-intro c)))
+
+peirce→em : ({B C : Set} → ((B → C) → B) → B) → {A : Set} → A ⊎ ¬ A
+peirce→em p = {!!}
+
+em⇔peirce : (∀ {A : Set} → (A ⊎ ¬ A)) ⇔ (∀ {B C : Set} → (((B → C) → B) → B))
+em⇔peirce =
+  record
+    { to = λ x → λ {B} {C} y → helper x (x {B}) (x {C}) y
+    ; from = peirce→em
+    }
+  where
+    helper :  (∀ {A : Set} → (A ⊎ ¬ A)) → ∀ {A B : Set} → (A ⊎ ¬ A) → (B ⊎ ¬ B) → ((A → B) → A) → A
+    helper em (inj₁ x) (inj₁ y) z  =  x
+    helper em (inj₁ x) (inj₂ y) z  =  x
+    helper em (inj₂ x) (inj₁ y) z  =  z (λ _ → y)
+    helper em (inj₂ x) (inj₂ y) z  =  ⊥-elim (x (z (em-contra em (λ _ → x))))
+
+
+
+-- em-impl : (∀ {A : Set} → (A ⊎ ¬ A)) ⇔
+
+-- dne-de-morgan : {A B : Set} → (¬ ¬ A → A) ⇔ (¬ (¬ A × ¬ B) → A ⊎ B)
+-- dne-de-morgan =
+--   record
+--     { to = λ x y → inj₁ {!!}
+--     ; from = {!!}
+--     }
+
+-- dn-impl : ∀ {A B : Set} → ((¬ ¬ A → A) × (¬ ¬ B → B)) ⇔ ((A → B) → ¬ A ⊎ B)
+-- dn-impl =
+--   record
+--     { to = λ{ ⟨ fst , snd ⟩ y → {!!}}
+--     ; from = {!!}
+--     }
+
+-- em-impl : ∀ {A B : Set} → (A ⊎ ¬ A) → (B ⊎ ¬ B) → (A → B) → ¬ A ⊎ B
+-- em-impl (inj₁ x) (inj₁ y)  =  λ z → inj₂ y
+-- em-impl (inj₁ x) (inj₂ y)  =  λ z → inj₂ (z x)
+-- em-impl (inj₂ x) (inj₁ y)  =  λ z → inj₂ y
+-- em-impl (inj₂ x) (inj₂ y)  =  λ z → inj₁ x
+
+-- em-de-morgan : ∀ {A B : Set} → (A ⊎ ¬ A) → (B ⊎ ¬ B) → (¬ (¬ A × ¬ B) → A ⊎ B)
+-- em-de-morgan (inj₁ x) (inj₁ y)  =  λ z → inj₁ x
+-- em-de-morgan (inj₁ x) (inj₂ y)  =  λ z → inj₁ x
+-- em-de-morgan (inj₂ x) (inj₁ y)  =  λ z → inj₂ y
+-- em-de-morgan (inj₂ x) (inj₂ y)  =  λ z → ⊥-elim (z ⟨ x , y ⟩)
 ```
 
 
@@ -393,7 +527,18 @@ Show that any negated formula is stable, and that the conjunction
 of two stable formulas is stable.
 
 ```agda
--- Your code goes here
+¬-stable : {A : Set} → Stable (¬ A)
+¬-stable = ¬¬¬-elim
+
+×-stable : {A B : Set}
+  → Stable A
+  → Stable B
+  ----------------
+  → Stable (A × B)
+×-stable a b = λ x →
+  ⟨ a (λ z → x (λ y → z (proj₁ y)))
+  , b (λ z → x (λ y → z (proj₂ y)))
+  ⟩
 ```
 
 ## Standard Prelude

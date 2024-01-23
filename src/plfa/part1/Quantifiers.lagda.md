@@ -90,9 +90,15 @@ dependent product is ambiguous.
 
 Show that universals distribute over conjunction:
 ```agda
-postulate
-  ∀-distrib-× : ∀ {A : Set} {B C : A → Set} →
-    (∀ (x : A) → B x × C x) ≃ (∀ (x : A) → B x) × (∀ (x : A) → C x)
+∀-distrib-× : ∀ {A : Set} {B C : A → Set} →
+  (∀ (x : A) → B x × C x) ≃ (∀ (x : A) → B x) × (∀ (x : A) → C x)
+∀-distrib-× =
+  record
+    { to       =  λ x → ⟨ (λ y → proj₁ (x y)) , ((λ y → proj₂ (x y))) ⟩
+    ; from     =  λ { ⟨ fst , snd ⟩ y → ⟨ fst y , snd y ⟩}
+    ; from∘to  =  λ x → refl
+    ; to∘from  =  λ y → refl
+    }
 ```
 Compare this with the result (`→-distrib-×`) in
 Chapter [Connectives](/Connectives/).
@@ -103,9 +109,10 @@ Hint: you will need to use [`∀-extensionality`](/Isomorphism/#extensionality).
 
 Show that a disjunction of universals implies a universal of disjunctions:
 ```agda
-postulate
-  ⊎∀-implies-∀⊎ : ∀ {A : Set} {B C : A → Set} →
-    (∀ (x : A) → B x) ⊎ (∀ (x : A) → C x) → ∀ (x : A) → B x ⊎ C x
+⊎∀-implies-∀⊎ : ∀ {A : Set} {B C : A → Set} →
+  (∀ (x : A) → B x) ⊎ (∀ (x : A) → C x) → ∀ (x : A) → B x ⊎ C x
+⊎∀-implies-∀⊎ (inj₁ f) = λ x → inj₁ (f x)
+⊎∀-implies-∀⊎ (inj₂ f) = λ x → inj₂ (f x)
 ```
 Does the converse hold? If so, prove; if not, explain why.
 
@@ -121,6 +128,17 @@ data Tri : Set where
 ```
 Let `B` be a type indexed by `Tri`, that is `B : Tri → Set`.
 Show that `∀ (x : Tri) → B x` is isomorphic to `B aa × B bb × B cc`.
+
+```agda
+∀-× : ∀ {B : Tri → Set} → (∀ (x : Tri) → B x) ≃ (B aa × B bb × B cc)
+∀-× {B} =
+  record
+    { to = λ x → ⟨ x aa , ⟨ x bb , x cc ⟩ ⟩
+    ; from = λ{ y aa → proj₁ y ; y bb → proj₁ (proj₂ y) ; y cc → proj₂ (proj₂ y)}
+    ; from∘to = λ x → ∀-extensionality (λ { aa → refl ; bb → refl ; cc → refl })
+    ; to∘from = λ y → refl
+    }
+```
 
 Hint: you will need to use [`∀-extensionality`](/Isomorphism/#extensionality).
 
@@ -248,18 +266,24 @@ establish the isomorphism is identical to what we wrote when discussing
 
 Show that existentials distribute over disjunction:
 ```agda
-postulate
-  ∃-distrib-⊎ : ∀ {A : Set} {B C : A → Set} →
-    ∃[ x ] (B x ⊎ C x) ≃ (∃[ x ] B x) ⊎ (∃[ x ] C x)
+∃-distrib-⊎ : ∀ {A : Set} {B C : A → Set} →
+  ∃[ x ] (B x ⊎ C x) ≃ (∃[ x ] B x) ⊎ (∃[ x ] C x)
+∃-distrib-⊎ =
+  record
+  { to = λ{ ⟨ x , inj₁ y ⟩ → inj₁ ⟨ x , y ⟩ ; ⟨ x , inj₂ y ⟩ → inj₂ ⟨ x , y ⟩}
+  ; from = λ{ (inj₁ ⟨ i , j ⟩) → ⟨ i , inj₁ j ⟩ ; (inj₂ ⟨ i , j ⟩) → ⟨ i , (inj₂ j) ⟩}
+  ; from∘to = λ{ ⟨ a , inj₁ b ⟩ → refl ; ⟨ a , inj₂ b ⟩ → refl}
+  ; to∘from = λ{ (inj₁ ⟨ x , y ⟩) → refl ; (inj₂ ⟨ x , y ⟩) → refl}
+  }
 ```
 
 #### Exercise `∃×-implies-×∃` (practice)
 
 Show that an existential of conjunctions implies a conjunction of existentials:
 ```agda
-postulate
-  ∃×-implies-×∃ : ∀ {A : Set} {B C : A → Set} →
-    ∃[ x ] (B x × C x) → (∃[ x ] B x) × (∃[ x ] C x)
+∃×-implies-×∃ : ∀ {A : Set} {B C : A → Set} →
+  ∃[ x ] (B x × C x) → (∃[ x ] B x) × (∃[ x ] C x)
+∃×-implies-×∃ ⟨ x , f ⟩ = ⟨ ⟨ x , proj₁ f ⟩ , ⟨ x , proj₂ f ⟩ ⟩
 ```
 Does the converse hold? If so, prove; if not, explain why.
 
@@ -268,6 +292,16 @@ Does the converse hold? If so, prove; if not, explain why.
 Let `Tri` and `B` be as in Exercise `∀-×`.
 Show that `∃[ x ] B x` is isomorphic to `B aa ⊎ B bb ⊎ B cc`.
 
+```agda
+∃-⊎ : ∀ {B : Tri → Set} → ∃[ x ] B x ≃ (B aa ⊎ B bb ⊎ B cc)
+∃-⊎ =
+  record
+    { to = λ{ ⟨ aa , y ⟩ → inj₁ y ; ⟨ bb , y ⟩ → inj₂ (inj₁ y) ; ⟨ cc , y ⟩ → inj₂ (inj₂ y) }
+    ; from = λ{ (inj₁ x) → ⟨ aa , x ⟩ ; (inj₂ (inj₁ x)) → ⟨ bb , x ⟩ ; (inj₂ (inj₂ x)) → ⟨ cc , x ⟩ }
+    ; from∘to = λ{ ⟨ aa , y ⟩ → refl ; ⟨ bb , y ⟩ → refl ; ⟨ cc , y ⟩ → refl }
+    ; to∘from = λ{ (inj₁ x) → refl ; (inj₂ (inj₁ x)) → refl ; (inj₂ (inj₂ x)) → refl }
+    }
+```
 
 ## An existential example
 
@@ -386,9 +420,21 @@ Show that `y ≤ z` holds if and only if there exists a `x` such that
 `x + y ≡ z`.
 
 ```agda
--- Your code goes here
-```
+open import Data.Nat using (_≤_; _∸_)
+open import plfa.part1.Isomorphism using (_⇔_)
+open Eq using (trans; cong; sym)
+open Eq.≡-Reasoning
+open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; ≤-reflexive; +-mono-≤; m+n≤o⇒n≤o; m∸n+n≡m)
 
+open _≤_
+
+∃-+-≤ : ∀ {x y z : ℕ} → (y ≤ z) ⇔ (∃[ x ] (x + y ≡ z))
+∃-+-≤ {x} {y} {z} =
+  record
+    { to = λ{ z≤n → ⟨ z , +-identityʳ z ⟩ ; (s≤s l) → ⟨ z ∸ y , m∸n+n≡m (s≤s l) ⟩ }
+    ; from = λ{ ⟨ a , b ⟩ →  m+n≤o⇒n≤o a (≤-reflexive b) }
+    }
+```
 
 ## Existentials, Universals, and Negation
 
@@ -429,11 +475,13 @@ requires extensionality.
 
 Show that existential of a negation implies negation of a universal:
 ```agda
-postulate
-  ∃¬-implies-¬∀ : ∀ {A : Set} {B : A → Set}
-    → ∃[ x ] (¬ B x)
-      --------------
-    → ¬ (∀ x → B x)
+∃¬-implies-¬∀ : ∀ {A : Set} {B : A → Set}
+  → ∃[ x ] (¬ B x)
+  --------------
+  → ¬ (∀ x → B x)
+∃¬-implies-¬∀ ⟨ x , y ⟩ = λ f → y (f x)
+
+-- reverse doesn't not hold, since we need to know _which_ specific x the universal fails for
 ```
 Does the converse hold? If so, prove; if not, explain why.
 
@@ -480,7 +528,7 @@ which is a corollary of `≡Can`.
     proj₁≡→Can≡ : {c c′ : ∃[ b ] Can b} → proj₁ c ≡ proj₁ c′ → c ≡ c′
 
 ```agda
--- Your code goes here
+-- see Bin.agda
 ```
 
 

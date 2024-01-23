@@ -34,6 +34,7 @@ open import Data.Nat using (ℕ)
 open import Function using (_∘_)
 open import plfa.part1.Isomorphism using (_≃_; _≲_; extensionality; _⇔_)
 open plfa.part1.Isomorphism.≃-Reasoning
+
 ```
 
 
@@ -43,13 +44,15 @@ Given two propositions `A` and `B`, the conjunction `A × B` holds
 if both `A` holds and `B` holds.  We formalise this idea by
 declaring a suitable datatype:
 ```agda
-data _×_ (A B : Set) : Set where
+open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩)
 
-  ⟨_,_⟩ :
-      A
-    → B
-      -----
-    → A × B
+-- data _×_ (A B : Set) : Set where
+
+--   ⟨_,_⟩ :
+--       A
+--     → B
+--       -----
+--     → A × B
 ```
 Evidence that `A × B` holds is of the form `⟨ M , N ⟩`, where `M`
 provides evidence that `A` holds and `N` provides evidence that `B`
@@ -58,17 +61,17 @@ holds.
 Given evidence that `A × B` holds, we can conclude that both
 `A` holds and `B` holds:
 ```agda
-proj₁ : ∀ {A B : Set}
-  → A × B
-    -----
-  → A
-proj₁ ⟨ x , y ⟩ = x
+-- proj₁ : ∀ {A B : Set}
+--   → A × B
+--     -----
+--   → A
+-- proj₁ ⟨ x , y ⟩ = x
 
-proj₂ : ∀ {A B : Set}
-  → A × B
-    -----
-  → B
-proj₂ ⟨ x , y ⟩ = y
+-- proj₂ : ∀ {A B : Set}
+--   → A × B
+--     -----
+--   → B
+-- proj₂ ⟨ x , y ⟩ = y
 ```
 If `L` provides evidence that `A × B` holds, then `proj₁ L` provides evidence
 that `A` holds, and `proj₂ L` provides evidence that `B` holds.
@@ -105,7 +108,7 @@ propositional equality to simplify to the same term.
 We set the precedence of conjunction so that it binds less
 tightly than anything save disjunction:
 ```agda
-infixr 2 _×_
+-- infixr 2 _×_
 ```
 Thus, `m ≤ n × n ≤ p` parses as `(m ≤ n) × (n ≤ p)`.
 
@@ -238,7 +241,16 @@ Show that `A ⇔ B` as defined [earlier](/Isomorphism/#iff)
 is isomorphic to `(A → B) × (B → A)`.
 
 ```agda
--- Your code goes here
+open _⇔_
+
+⇔≃× : ∀ {A B : Set} → (A ⇔ B) ≃ ((A → B) × (B → A))
+⇔≃× =
+  record
+    { to = λ A⇔B → ⟨ to A⇔B  , from A⇔B ⟩
+    ; from = λ{ ⟨ A→B , B→A ⟩ → record { to = A→B ; from = B→A } }
+    ; from∘to = λ A⇔B → refl
+    ; to∘from = λ{ ⟨ A→B , B→A ⟩ → refl }
+    }
 ```
 
 
@@ -451,7 +463,14 @@ commutative and associative _up to isomorphism_.
 Show sum is commutative up to isomorphism.
 
 ```agda
--- Your code goes here
+⊎-comm : {A B : Set} → (A ⊎ B) ≃ (B ⊎ A)
+⊎-comm =
+  record
+    { to      =  λ{ (inj₁ x) → inj₂ x ; (inj₂ x) → inj₁ x }
+    ; from    =  λ{ (inj₁ x) → inj₂ x ; (inj₂ x) → inj₁ x }
+    ; from∘to =  λ{ (inj₁ x) → refl ; (inj₂ x) → refl }
+    ; to∘from =  λ{ (inj₁ x) → refl ; (inj₂ x) → refl }
+    }
 ```
 
 #### Exercise `⊎-assoc` (practice)
@@ -459,7 +478,20 @@ Show sum is commutative up to isomorphism.
 Show sum is associative up to isomorphism.
 
 ```agda
--- Your code goes here
+⊎-assoc : {A B C : Set} → A ⊎ (B ⊎ C) ≃ (A ⊎ B) ⊎ C
+⊎-assoc =
+  record
+    { to      = λ { (inj₁ x) → inj₁ (inj₁ x)
+                  ; (inj₂ (inj₁ x)) → inj₁ (inj₂ x)
+                  ; (inj₂ (inj₂ x)) → inj₂ x
+                  }
+    ; from    = λ { (inj₁ (inj₁ x)) → inj₁ x
+                  ; (inj₁ (inj₂ x)) → inj₂ (inj₁ x)
+                  ; (inj₂ x) → inj₂ (inj₂ x)
+                  }
+    ; from∘to = λ { (inj₁ x) → refl ; (inj₂ (inj₁ x)) → refl ; (inj₂ (inj₂ x)) → refl }
+    ; to∘from = λ { (inj₁ (inj₁ x)) → refl ; (inj₁ (inj₂ x)) → refl ; (inj₂ x) → refl }
+    }
 ```
 
 ## False is empty
@@ -522,7 +554,14 @@ is the identity of sums _up to isomorphism_.
 Show empty is the left identity of sums up to isomorphism.
 
 ```agda
--- Your code goes here
+⊥-identityˡ : {A : Set} → (⊥ ⊎ A) ≃ A
+⊥-identityˡ =
+  record
+    { to       =  λ { (inj₂ x) → x }
+    ; from     =  inj₂
+    ; from∘to  =  λ { (inj₂ x) → refl}
+    ; to∘from  =  λ x → refl
+    }
 ```
 
 #### Exercise `⊥-identityʳ` (practice)
@@ -530,7 +569,15 @@ Show empty is the left identity of sums up to isomorphism.
 Show empty is the right identity of sums up to isomorphism.
 
 ```agda
--- Your code goes here
+⊥-identityʳ : {A : Set} → (A ⊎ ⊥) ≃ A
+⊥-identityʳ {A} = 
+  ≃-begin
+    (A ⊎ ⊥)
+  ≃⟨ ⊎-comm ⟩
+    (⊥ ⊎ A)
+  ≃⟨ ⊥-identityˡ ⟩
+    A
+  ≃-∎
 ```
 
 ## Implication is function {#implication}
@@ -754,14 +801,14 @@ one of these laws is "more true" than the other.
 
 Show that the following property holds:
 ```agda
-postulate
-  ⊎-weak-× : ∀ {A B C : Set} → (A ⊎ B) × C → A ⊎ (B × C)
+⊎-weak-× : ∀ {A B C : Set} → (A ⊎ B) × C → A ⊎ (B × C)
 ```
 This is called a _weak distributive law_. Give the corresponding
 distributive law, and explain how it relates to the weak version.
 
 ```agda
--- Your code goes here
+⊎-weak-× ⟨ inj₁ a , c ⟩ = inj₁ a
+⊎-weak-× ⟨ inj₂ b , c ⟩ = inj₂ ⟨ b , c ⟩
 ```
 
 
@@ -769,13 +816,15 @@ distributive law, and explain how it relates to the weak version.
 
 Show that a disjunct of conjuncts implies a conjunct of disjuncts:
 ```agda
-postulate
-  ⊎×-implies-×⊎ : ∀ {A B C D : Set} → (A × B) ⊎ (C × D) → (A ⊎ C) × (B ⊎ D)
+⊎×-implies-×⊎ : ∀ {A B C D : Set} → (A × B) ⊎ (C × D) → (A ⊎ C) × (B ⊎ D)
+⊎×-implies-×⊎ (inj₁ ⟨ a , b ⟩) = ⟨ inj₁ a , inj₁ b ⟩
+⊎×-implies-×⊎ (inj₂ ⟨ c , d ⟩) = ⟨ inj₂ c , inj₂ d ⟩
 ```
 Does the converse hold? If so, prove; if not, give a counterexample.
 
 ```agda
--- Your code goes here
+counterexample : {A B C D : Set} (a : A) (d : D) → (A ⊎ C) × (B ⊎ D)
+counterexample a d = ⟨ inj₁ a , inj₂ d ⟩
 ```
 
 

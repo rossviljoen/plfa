@@ -20,7 +20,7 @@ of a new notion of _decidable_.
 
 ```agda
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl)
+open Eq using (_≡_; _≢_; refl; cong)
 open Eq.≡-Reasoning
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_) renaming (_,_ to ⟨_,_⟩)
@@ -292,24 +292,56 @@ trouble normalising evidence of negation.)
 
 Analogous to the function above, define a function to decide strict inequality:
 ```agda
-postulate
-  _<?_ : ∀ (m n : ℕ) → Dec (m < n)
+_<?_ : ∀ (m n : ℕ) → Dec (m < n)
 ```
 
 ```agda
--- Your code goes here
+open _<_
+
+¬z<z : ¬ (zero < zero)
+¬z<z ()
+
+¬s<z : ∀ {m : ℕ} → ¬ (suc m < zero)
+¬s<z ()
+
+¬s<s : ∀ {m n : ℕ} → ¬ (m < n) → ¬ (suc m < suc n)
+¬s<s ¬m<n (s<s m<n) = ¬m<n m<n
+
+zero <? zero = no ¬z<z
+zero <? suc n = yes z<s
+suc m <? zero = no ¬s<z
+suc m <? suc n with m <? n
+...               | yes m<n = yes (s<s m<n)
+...               | no ¬m<n = no (¬s<s ¬m<n)
 ```
 
 #### Exercise `_≡ℕ?_` (practice)
 
 Define a function to decide whether two naturals are equal:
 ```agda
-postulate
-  _≡ℕ?_ : ∀ (m n : ℕ) → Dec (m ≡ n)
+_≡ℕ?_ : ∀ (m n : ℕ) → Dec (m ≡ n)
 ```
 
 ```agda
--- Your code goes here
+z≢s : ∀ {n : ℕ} → zero ≢ suc n
+z≢s ()
+
+s≢z : ∀ {n : ℕ} → suc n ≢ zero
+s≢z ()
+
+s≢s : ∀ {m n : ℕ} → m ≢ n → suc m ≢ suc n
+s≢s m≢n = λ{ refl → m≢n refl }
+
+s≡s : ∀ {m n : ℕ} → m ≡ n → suc m ≡ suc n
+s≡s m≡n = cong suc m≡n
+
+zero ≡ℕ? zero = yes refl
+zero ≡ℕ? suc n = no z≢s
+suc m ≡ℕ? zero = no s≢z
+suc m ≡ℕ? suc n with m ≡ℕ? n
+...                | yes m≡n = yes (s≡s m≡n)
+...                | no m≢n = no (s≢s m≢n) 
+
 ```
 
 
@@ -536,10 +568,21 @@ on which matches; but either is equally valid.
 
 Show that erasure relates corresponding boolean and decidable operations:
 ```agda
-postulate
-  ∧-× : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∧ ⌊ y ⌋ ≡ ⌊ x ×-dec y ⌋
-  ∨-⊎ : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∨ ⌊ y ⌋ ≡ ⌊ x ⊎-dec y ⌋
-  not-¬ : ∀ {A : Set} (x : Dec A) → not ⌊ x ⌋ ≡ ⌊ ¬? x ⌋
+∧-× : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∧ ⌊ y ⌋ ≡ ⌊ x ×-dec y ⌋
+∧-× (yes x) (yes y) = refl
+∧-× (yes x) (no y) = refl
+∧-× (no x) (yes y) = refl
+∧-× (no x) (no y) = refl
+
+∨-⊎ : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∨ ⌊ y ⌋ ≡ ⌊ x ⊎-dec y ⌋
+∨-⊎ (yes x) (yes y) = refl
+∨-⊎ (yes x) (no y) = refl
+∨-⊎ (no x) (yes y) = refl
+∨-⊎ (no x) (no y) = refl
+
+not-¬ : ∀ {A : Set} (x : Dec A) → not ⌊ x ⌋ ≡ ⌊ ¬? x ⌋
+not-¬ (yes x) = refl
+not-¬ (no x) = refl
 ```
 
 #### Exercise `iff-erasure` (recommended)
@@ -548,15 +591,26 @@ Give analogues of the `_⇔_` operation from
 Chapter [Isomorphism](/Isomorphism/#iff),
 operation on booleans and decidables, and also show the corresponding erasure:
 ```agda
-postulate
-  _iff_ : Bool → Bool → Bool
-  _⇔-dec_ : ∀ {A B : Set} → Dec A → Dec B → Dec (A ⇔ B)
-  iff-⇔ : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ iff ⌊ y ⌋ ≡ ⌊ x ⇔-dec y ⌋
+_iff_ : Bool → Bool → Bool
+true iff true   = true
+false iff false = true
+_ iff _         = false
+
+
+_⇔-dec_ : ∀ {A B : Set} → Dec A → Dec B → Dec (A ⇔ B)
+yes x ⇔-dec yes y = yes (record { to = λ _ → y ; from = λ _ → x })
+no x ⇔-dec no y = yes (record { to = λ a → ⊥-elim (x a) ; from = λ b → ⊥-elim (y b) })
+yes x ⇔-dec no y = no (λ a⇔b → y (_⇔_.to a⇔b x))
+no x ⇔-dec yes y = no (λ a⇔b → x (_⇔_.from a⇔b y))
+
+
+iff-⇔ : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ iff ⌊ y ⌋ ≡ ⌊ x ⇔-dec y ⌋
+iff-⇔ (yes x) (yes y) = refl
+iff-⇔ (yes x) (no y) = refl
+iff-⇔ (no x) (yes y) = refl
+iff-⇔ (no x) (no y) = refl
 ```
 
-```agda
--- Your code goes here
-```
 
 ## Proof by reflection {#proof-by-reflection}
 
@@ -623,7 +677,7 @@ synonym for `T ⌊ ? ⌋` called `True`:
 
 ```agda
 True : ∀ {Q} → Dec Q → Set
-True Q = T ⌊ Q ⌋
+True DQ = T ⌊ DQ ⌋
 ```
 
 #### Exercise `False` (practice)
@@ -631,6 +685,20 @@ True Q = T ⌊ Q ⌋
 Give analogues of `True`, `toWitness`, and `fromWitness` which work
 with *negated* properties. Call these `False`, `toWitnessFalse`, and
 `fromWitnessFalse`.
+
+```agda
+False : ∀ {Q} → Dec Q → Set
+False DQ = T ⌊ ¬? DQ ⌋
+
+
+toWitnessFalse : ∀ {A : Set} {D : Dec A} → False D → ¬ A
+toWitnessFalse {A} {no ¬a} f  =  λ a → ¬a a
+
+fromWitnessFalse : ∀ {A : Set} {D : Dec A} → ¬ A → False D
+fromWitnessFalse {A} {yes x} ¬a  =  ¬a x
+fromWitnessFalse {A} {no x} _    =  tt
+```
+
 
 
 #### Exercise `Bin-decidable` (stretch)

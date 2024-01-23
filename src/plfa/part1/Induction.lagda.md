@@ -890,7 +890,17 @@ just apply the previous results which show addition
 is associative and commutative.
 
 ```agda
--- Your code goes here
++-swap : ∀ (m n p : ℕ) → m + (n + p) ≡ n + (m + p)
++-swap m n p = 
+  begin
+    m + (n + p)
+  ≡⟨ sym (+-assoc m n p) ⟩
+    (m + n) + p
+  ≡⟨ cong (_+ p) (+-comm m n) ⟩
+    (n + m) + p
+  ≡⟨ +-assoc n m p ⟩
+    n + (m + p)
+  ∎
 ```
 
 
@@ -903,7 +913,21 @@ Show multiplication distributes over addition, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```agda
--- Your code goes here
+*-distrib-+ : ∀ (m n p : ℕ) → (m + n) * p ≡ m * p + n * p
+*-distrib-+ zero n p = refl
+*-distrib-+ (suc m) n p = 
+  begin
+    suc (m + n) * p
+  ≡⟨⟩
+    p + (m + n) * p
+  ≡⟨ cong (p +_) (*-distrib-+ m n p) ⟩
+    p + (m * p + n * p)
+  ≡⟨ sym (+-assoc p (m * p) (n * p))⟩
+    (p + m * p) + n * p
+  ≡⟨⟩
+    (suc m) * p + n * p
+  ∎
+
 ```
 
 
@@ -916,7 +940,20 @@ Show multiplication is associative, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```agda
--- Your code goes here
+*-assoc : ∀ (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
+*-assoc zero n p = refl
+*-assoc (suc m) n p = 
+  begin
+    (suc m * n) * p
+  ≡⟨⟩  -- defn of *
+    (n + m * n) * p
+  ≡⟨ *-distrib-+ n (m * n) p ⟩
+    n * p + (m * n) * p
+  ≡⟨ cong (n * p +_) (*-assoc m n p) ⟩
+    (n * p) + m * (n * p)
+  ≡⟨⟩  -- unapply defn of *
+    suc m * (n * p)
+  ∎
 ```
 
 
@@ -930,7 +967,34 @@ for all naturals `m` and `n`.  As with commutativity of addition,
 you will need to formulate and prove suitable lemmas.
 
 ```agda
--- Your code goes here
+*-identity : ∀ (n : ℕ) → n * zero ≡ zero
+*-identity zero = refl
+*-identity (suc n) rewrite *-identity n = refl
+
+*-suc : ∀ (m n : ℕ) → m * (suc n) ≡ m + m * n
+*-suc zero n = refl
+*-suc (suc m) n = 
+  begin
+    suc m * suc n
+  ≡⟨⟩  -- defn of *
+    suc n + m * suc n
+  ≡⟨ cong (suc n +_) (*-suc m n) ⟩
+    suc n + (m + m * n)
+  ≡⟨ sym (+-assoc (suc n) m (m * n)) ⟩
+    (suc n + m) + m * n
+  ≡⟨ cong (_+ (m * n)) (sym (+-suc n m)) ⟩
+    n + suc m + m * n
+  ≡⟨ cong (_+ (m * n)) (+-comm n (suc m)) ⟩
+    suc m + n + m * n
+  ≡⟨ (+-assoc (suc m) n (m * n)) ⟩
+    suc m + (n + m * n)
+  ≡⟨⟩
+    suc m + suc m * n
+  ∎
+
+*-comm : ∀ (m n : ℕ) → m * n ≡ n * m
+*-comm zero n rewrite *-identity n = refl
+*-comm (suc m) n rewrite *-comm m n | *-suc n m = refl
 ```
 
 
@@ -943,7 +1007,9 @@ Show
 for all naturals `n`. Did your proof require induction?
 
 ```agda
--- Your code goes here
+0-monus : ∀ (n : ℕ) → zero ∸ n ≡ zero
+0-monus zero = refl
+0-monus (suc n) = refl
 ```
 
 
@@ -956,7 +1022,21 @@ Show that monus associates with addition, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```agda
--- Your code goes here
+∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
+∸-+-assoc zero n p rewrite 0-monus n | 0-monus p | 0-monus (n + p) = refl
+∸-+-assoc (suc m) zero p = refl
+∸-+-assoc (suc m) (suc n) p = 
+  begin
+    suc m ∸ suc n ∸ p
+  ≡⟨⟩  -- defn of ∸
+    m ∸ n ∸ p
+  ≡⟨ ∸-+-assoc m n p ⟩
+    m ∸ (n + p)
+  ≡⟨⟩  -- unapply defn of ∸
+    suc m ∸ suc (n + p)
+  ≡⟨⟩  -- unapply defn of +
+    suc m ∸ (suc n + p)
+  ∎
 ```
 
 
@@ -971,7 +1051,7 @@ Show the following three laws
 for all `m`, `n`, and `p`.
 
 ```
--- Your code goes here
+-- TODO:
 ```
 
 
@@ -996,7 +1076,7 @@ over bitstrings:
 For each law: if it holds, prove; if not, give a counterexample.
 
 ```agda
--- Your code goes here
+-- see Bin.agda
 ```
 
 
